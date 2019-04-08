@@ -1,0 +1,66 @@
+bgzip ml_pipeline/ibd.control.chr1.vcf
+tabix -p vcf ml_pipeline/ibd.control.chr1.vcf.gz
+
+qlogin -q interactive.q
+
+EPACTS/bin/epacts anno --in ml_pipeline/ibd.control.chr1.vcf.gz --out ml_pipeline/ibd.control.chr1.anno.vcf.gz
+EPACTS/bin/epacts make-group --vcf ml_pipeline/ibd.control.chr1.anno.vcf.gz --out ml_pipeline/ibd.control.chr1.anno.groupfile --format epacts --nonsyn  
+* try --format choas and --type frameshift
+EPACTS/bin/epacts group --vcf ml_pipeline/ibd.control.chr1.anno.vcf.gz --groupf ml_pipeline/ibd.control.chr1.anno.groupfile --out ml_pipeline/test.gene.skat --ped ml_pipeline/ibd.control.ped --max-maf 0.05 -pheno phenotype -test skat --skat-o --run 2
+head -1001 ml_pipeline/test.gene.skat.epacts.top5000 > ml_pipeline/test.gene.skat.epacts.top1000
+java -Xmx8g -jar /mnt/isilon/cbmi/variome/bin/snpeff/4.3/snpEff/SnpSift.jar annotate -info AF -name gnomAD_ /mnt/isilon/cbmi/variome/dawany/general_ref_files/gnomad.exomes.r2.0.2.sites.vcf.gz ibd.control.chr1.anno.vcf.gz > ibd.control.chr1.anno.gnomadanno1.vcf
+
+java -jar /mnt/isilon/cbmi/variome/bin/snpeff/4.3/snpEff/SnpSift.jar filter " ( gnomAD_AF < 0.05 ) | !(exists gnomAD_AF)" ibd.control.chr1.anno.gnomadanno1.vcf > ibd.control.chr1.anno.gnomadanno1.filtered.vcf
+
+###For 1000genomes data ###
+
+for chr in {1..22}; do     
+bcftools/bcftools norm -m-any --check-ref w -f /mnt/isilon/dbhi_bfx/reference/human/g1k_v37/human_g1k_v37.fasta     
+ALL.chr"${chr}".phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz |      
+
+bcftools/bcftools annotate -x ID -I +'%CHROM:%POS:%REF:%ALT' |     
+
+bcftools/bcftools norm -Ob --rm-dup both     
+> ALL.chr"${chr}".phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.bcf ;     
+
+bcftools/bcftools index ALL.chr"${chr}".phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.bcf ; 
+done
+
+plink --noweb --bcf ibd.control.chr1.bcf --keep-allele-order --vcf-idspace-to _ --const-fid --allow-extra-chr 0 --split-x b37 no-fail --make-bed --out ibd.control.chr1
+
+/mnt/isilon/cbmi/variome/jadhavt/ml_pipeline/ibd.control.chr1.anno.gnomadanno.vcf.gz
+ibd.control.ped
+
+###For our data ###
+
+bcftools/bcftools norm -m-any --check-ref w -f /mnt/isilon/dbhi_bfx/reference/human/g1k_v37/human_g1k_v37.fasta ibd.control.chr1.vcf.gz | bcftools/bcftools annotate -x ID -I +'%CHROM:%POS:%REF:%ALT' | bcftools/bcftools norm -Ob --rm-dup both > ibd.control.chr1.bcf
+
+bcftools/bcftools index ibd.control.chr1.anno.gnomadanno.vcf.gz.bcf 
+
+plink --noweb --bfile ibd.control.chr1 \
+    --maf 0.10 --indep 50 5 1.5 \
+    --out Pruned/ibd.control.chr1
+    
+plink --noweb --bfile ibd.control.chr1 \
+    --extract Pruned/ibd.control.chr1.prune.in --make-bed \
+    --out Pruned/ibd.control.chr1
+    
+###For all chromosomes of our data ###
+
+for chr in {1..22}; do
+    bcftools/bcftools norm -m-any --check-ref w -f /mnt/isilon/dbhi_bfx/reference/human/g1k_v37/human_g1k_v37.fasta \
+    ibd.control.chr"${chr}".vcf.gz | \
+
+    bcftools/bcftools annotate -x ID -I +'%CHROM:%POS:%REF:%ALT' |
+
+    bcftools/bcftools norm -Ob --rm-dup both \
+    > ibd.control.chr"${chr}".bcf ;
+
+    bcftools/bcftools index ibd.control.chr"${chr}".bcf ;
+done
+
+for chr in {1..22}; do
+    plink --noweb --bcf ibd.control.chr"${chr}".bcf \
+    --keep-allele-order --vcf-idspace-to _ --const-fid --allow-extra-chr 0 --split-x b37 no-fail --make-bed \
+    --out ibd.control.chr"${chr}" ;
+done

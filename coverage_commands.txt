@@ -1,0 +1,9 @@
+coverage commands
+
+coverageBed -abam bams_for_coverage/IBD_6129A.sorted.mdup.bam -b /mnt/isilon/dbhi_bfx/dawany/general_ref_files/reference_bed/MultiPlatform.2.merged.bed > coverageresults/IBD_6129A.coverage
+
+
+
+for file in $(<bamfiles.txt); do
+    coverageBed -abam "./bams_for_coverage/${file}.sorted.mdup.bam" -b /mnt/isilon/dbhi_bfx/dawany/general_ref_files/reference_bed/MultiPlatform.2.merged.bed > coverageresults/${file}.coverage ;
+done
