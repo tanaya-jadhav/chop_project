@@ -1,3 +1,5 @@
+bedtools intersect -a ml_pipeline/ibd.control.chr1.vcf.gz -b filteredranges1.bed > filtered_trial/intersected.chr1.vcf
+
 bgzip ml_pipeline/ibd.control.chr1.vcf
 tabix -p vcf ml_pipeline/ibd.control.chr1.vcf.gz
 
@@ -14,24 +16,63 @@ java -jar /mnt/isilon/cbmi/variome/bin/snpeff/4.3/snpEff/SnpSift.jar filter " ( 
 
 ###For 1000genomes data ###
 
+wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz.tbi
+
 for chr in {1..22}; do     
-bcftools/bcftools norm -m-any --check-ref w -f /mnt/isilon/dbhi_bfx/reference/human/g1k_v37/human_g1k_v37.fasta     
-ALL.chr"${chr}".phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz |      
+../bcftools/bcftools norm -m-any --check-ref w -f /mnt/isilon/dbhi_bfx/reference/human/g1k_v37/human_g1k_v37.fasta thousandgenomes.header.chr"${chr}".vcf.gz |      
 
-bcftools/bcftools annotate -x ID -I +'%CHROM:%POS:%REF:%ALT' |     
+../bcftools/bcftools annotate -x ID -I +'%CHROM:%POS:%REF:%ALT' |     
 
-bcftools/bcftools norm -Ob --rm-dup both     
-> ALL.chr"${chr}".phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.bcf ;     
+../bcftools/bcftools norm -Ob --rm-dup both > thousandgenomes.header.chr"${chr}".bcf ;     
 
-bcftools/bcftools index ALL.chr"${chr}".phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.bcf ; 
+../bcftools/bcftools index thousandgenomes.header.chr"${chr}".bcf ; 
 done
+
+for chr in {1..22}; do
+    bgzip thousandgenomes.header.chr"${chr}".vcf ;
+done
+
+for chr in {1..22}; do
+    tabix -p vcf thousandgenomes.header.chr"${chr}".vcf.gz ;
+done
+
+for chr in {1..22}; do
+    bedtools intersect -a ALL.chr"${chr}".phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz -b /mnt/isilon/dbhi_bfx/dawany/general_ref_files/reference_bed/MultiPlatform.2.merged.bed > thousandgenomes.chr"${chr}".vcf ;
+done
+
+for chr in {1..22}; do
+    zcat ALL.chr"${chr}".phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz | head -253 > header"${chr}".txt ;
+done
+
+for chr in {1..22}; do
+    cat header"${chr}".txt thousandgenomes.chr"${chr}".vcf > thousandgenomes.header.chr"${chr}".vcf ;
+done
+
+for chr in {1..22}; do
+    plink --noweb --bcf thousandgenomes.header.chr"${chr}".bcf \
+    --keep-allele-order --vcf-idspace-to _ --const-fid --allow-extra-chr 0 --split-x b37 no-fail --make-bed \
+    --out thousandgenomes.header.chr"${chr}" ;
+done
+
+mkdir Pruned ;
+
+for chr in {1..22}; do
+    plink --noweb --bfile thousandgenomes.header.chr"${chr}" \
+    --maf 0.10 --indep 50 5 1.5 \
+    --out Pruned/thousandgenomes.header.chr"${chr}" ;
+
+    plink --noweb --bfile thousandgenomes.header.chr"${chr}" \
+    --extract Pruned/thousandgenomes.header.chr"${chr}".prune.in --make-bed \
+    --out Pruned/thousandgenomes.header.chr"${chr}" ;
+done
+
+###For our data ###
 
 plink --noweb --bcf ibd.control.chr1.bcf --keep-allele-order --vcf-idspace-to _ --const-fid --allow-extra-chr 0 --split-x b37 no-fail --make-bed --out ibd.control.chr1
 
 /mnt/isilon/cbmi/variome/jadhavt/ml_pipeline/ibd.control.chr1.anno.gnomadanno.vcf.gz
 ibd.control.ped
 
-###For our data ###
 
 bcftools/bcftools norm -m-any --check-ref w -f /mnt/isilon/dbhi_bfx/reference/human/g1k_v37/human_g1k_v37.fasta ibd.control.chr1.vcf.gz | bcftools/bcftools annotate -x ID -I +'%CHROM:%POS:%REF:%ALT' | bcftools/bcftools norm -Ob --rm-dup both > ibd.control.chr1.bcf
 
@@ -48,15 +89,13 @@ plink --noweb --bfile ibd.control.chr1 \
 ###For all chromosomes of our data ###
 
 for chr in {1..22}; do
-    bcftools/bcftools norm -m-any --check-ref w -f /mnt/isilon/dbhi_bfx/reference/human/g1k_v37/human_g1k_v37.fasta \
-    ibd.control.chr"${chr}".vcf.gz | \
+    ../bcftools/bcftools norm -m-any --check-ref w -f /mnt/isilon/dbhi_bfx/reference/human/g1k_v37/human_g1k_v37.fasta ibd.control.chr"${chr}".vcf.gz | 
 
-    bcftools/bcftools annotate -x ID -I +'%CHROM:%POS:%REF:%ALT' |
+    ../bcftools/bcftools annotate -x ID -I +'%CHROM:%POS:%REF:%ALT' |
 
-    bcftools/bcftools norm -Ob --rm-dup both \
-    > ibd.control.chr"${chr}".bcf ;
+    ../bcftools/bcftools norm -Ob --rm-dup both > ibd.control.chr"${chr}".bcf ;
 
-    bcftools/bcftools index ibd.control.chr"${chr}".bcf ;
+    ../bcftools/bcftools index ibd.control.chr"${chr}".bcf ;
 done
 
 for chr in {1..22}; do
@@ -64,3 +103,39 @@ for chr in {1..22}; do
     --keep-allele-order --vcf-idspace-to _ --const-fid --allow-extra-chr 0 --split-x b37 no-fail --make-bed \
     --out ibd.control.chr"${chr}" ;
 done
+
+for chr in {1..22}; do
+    plink --noweb --bfile ibd.control.chr"${chr}" \
+    --maf 0.10 --indep 50 5 1.5 \
+    --out Pruned/ibd.control.chr"${chr}" ;
+
+    plink --noweb --bfile ibd.control.chr"${chr}" \
+    --extract Pruned/ibd.control.chr"${chr}".prune.in --make-bed \
+    --out Pruned/ibd.control.chr"${chr}" ;
+done
+
+
+
+*******************************************************************************
+
+concatenate vcf files
+intersect against filtered ranges in bed file
+add header to intersected vcf file
+
+*****************************************************************************
+
+
+tabix myvcf.vcf.gz 1 > chr1.vcf
+qsub  -l h_vmem=20G collapse_chr22.sh
+
+shell script:
+
+#!/bin/sh
+#$ -cwd
+
+
+/home/jadhavt/miniconda3/bin/python3 collapse_data_chr22.py
+
+
+
+
