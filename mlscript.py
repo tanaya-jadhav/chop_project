@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 #     return (data, vecData)
 
 
-cd_path = './collapsed_data2.tsv'
+cd_path = './outcombined.tsv'
 cd = pd.read_csv(cd_path, sep='\t')
 cd = cd.T
 cd.columns = cd.iloc[0]
@@ -52,15 +52,20 @@ X_train, X_test, y_train, y_test =train_test_split(cd_data, cd_target, test_size
 
 dt = tree.DecisionTreeClassifier(criterion='entropy')
 dt = dt.fit(X_train, y_train)
-# y_pred = dt.predict(X_test)
-# print("Accuracy:{0:.3f}".format(metrics.accuracy_score(y_test, y_pred)), "\n")
+y_pred = dt.predict(X_test)
+print("Accuracy:{0:.3f}".format(metrics.accuracy_score(y_test, y_pred)), "\n")
+print(metrics.confusion_matrix(y_test, y_pred))
 #
-fs = feature_selection.SelectPercentile(feature_selection.chi2, percentile=30)
+fs = feature_selection.SelectPercentile(feature_selection.chi2, percentile=46)
 x_train_fs = fs.fit_transform(X_train, y_train)
 dt = dt.fit(x_train_fs, y_train)
 X_test_fs = fs.transform(X_test)
 y_pred_fs = dt.predict(X_test_fs)
 print("Accuracy:{0:.3f}".format(metrics.accuracy_score(y_test, y_pred_fs)), "\n")
+print(metrics.confusion_matrix(y_test, y_pred_fs))
+
+
+
 
 # percentiles = range(1, 100, 5)
 # results = []
@@ -88,7 +93,7 @@ print("Accuracy:{0:.3f}".format(metrics.accuracy_score(y_test, y_pred_fs)), "\n"
 #
 # plt.figure(2)
 # plt.plot(percentiles, acclist)
-# plt.savefig('./feat_vs_acc_plot_testset.png')
+# plt.savefig('./allchr_feat_vs_acc_testset.png')
 
 
 # plottrain = pl.figure()

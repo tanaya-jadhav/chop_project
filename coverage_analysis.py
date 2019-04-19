@@ -34,6 +34,9 @@ def main():
     # print(control_dict)
 
     p_list = []
+    average_IBD = []
+    average_control = []
+    average_diff = []
     for row in range(200451):
         IBD_list = []
         control_list = []
@@ -41,10 +44,16 @@ def main():
             IBD_list.append(cov[row])
         for sample, cov in control_dict.items():
             control_list.append(cov[row])
+        mean_ibd = np.mean(IBD_list)
+        mean_cont = np.mean(control_list)
+        average_IBD.append(mean_ibd)
+        average_control.append(mean_cont)
+        average_diff.append(abs(mean_ibd - mean_cont))
         t, p = stats.ttest_ind(IBD_list, control_list)
         p_list.append(p)
         # print(p)
     print("plist", len(p_list))
+    print("average diff", len(average_diff), average_diff[:10])
 
     # rstats = importr('stats')
 
@@ -82,10 +91,10 @@ def main():
 
     print("new p adjusted", len(p_adjusted_list))
 
-    data = p_list
-    p_df = pd.DataFrame(data, columns=['ttest_p-vals'])
+    data = list(zip(average_IBD, average_control, average_diff, p_list))
+    p_df = pd.DataFrame(data, columns=['IBD_average', 'control_average', 'average_difference', 'ttest_p-vals'])
     p_df['adjusted_pvals'] = p_adjusted_list
-    p_df.to_csv('./coverage_pvals.tsv', sep='\t', index=False)
+    p_df.to_csv('./coverage_pvals_differences.tsv', sep='\t', index=False, header=False)
 
 
 
